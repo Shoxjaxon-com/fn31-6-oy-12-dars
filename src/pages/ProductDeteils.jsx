@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../store/cartSlice";
 import { backendApi } from "../axios";
-import { Toaster, toast } from "sonner";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function ProductDetail() {
   const { id } = useParams();
+  const dispatch = useDispatch();
   const [product, setProduct] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   useEffect(() => {
     backendApi
@@ -14,7 +20,6 @@ function ProductDetail() {
       .then((response) => {
         if (response.status === 200 && response.data.data) {
           setProduct(response.data.data.attributes);
-          toast.success("Product details loaded successfully!");
         }
       })
       .catch((error) => {
@@ -24,11 +29,34 @@ function ProductDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const handleAddToCart = () => {
+    if (!selectedColor) {
+      toast.error("❌ Please select a color.");
+      return;
+    }
+
+    const cartItem = {
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      image: product.image,
+      color: selectedColor,
+      quantity: selectedQuantity,
+    };
+
+    dispatch(addToCart(cartItem));
+
+    toast.success(`✅ ${product.title} added to cart!`);
+  };
+
   if (loading) return <p>Loading...</p>;
   if (!product) return <p>Product not found.</p>;
 
   return (
     <div className="container mx-auto mt-10 flex items-center justify-between gap-10">
+      {/* ToastContainer (Agar App.js da bo‘lsa, bu yerdan olib tashlang) */}
+      <ToastContainer position="top-center" autoClose={2000} />
+
       <div className="w-1/2 h-1/2 flex justify-between">
         <img
           className="rounded-md h-1/5"
@@ -42,7 +70,11 @@ function ProductDetail() {
         <p className="mt-6 leading-8 mb-5">{product.description}</p>
 
         <div>
-          <select className="select select-primary w-full max-w-xs">
+          <select 
+            className="select select-primary w-full max-w-xs" 
+            value={selectedQuantity} 
+            onChange={(e) => setSelectedQuantity(Number(e.target.value))}
+          >
             {[...Array(20)].map((_, index) => (
               <option key={index + 1} value={index + 1}>
                 {index + 1}
@@ -51,13 +83,25 @@ function ProductDetail() {
           </select>
         </div>
 
+        {product.colors && product.colors.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold">Available Colors:</h3>
+            <div className="flex gap-2 mt-2">
+              {product.colors.map((color, index) => (
+                <div
+                  key={index}
+                  className={`w-8 h-8 rounded-full border border-gray-300 cursor-pointer ${selectedColor === color ? 'ring-2 ring-blue-500' : ''}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setSelectedColor(color)}
+                ></div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-5">
-          <Toaster position="top-center" />
-          <button
-            className="btn btn-primary"
-            onClick={() => toast.success("Item added to cart!")}
-          >
-            Add to Cart
+          <button className="btn btn-primary" onClick={handleAddToCart}>
+            Add to Bag
           </button>
         </div>
       </div>
